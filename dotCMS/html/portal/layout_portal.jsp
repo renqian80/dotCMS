@@ -41,7 +41,11 @@
 		</div>
 		
 		<div id="bd">
-			<jsp:include page="<%= Constants.TEXT_HTML_DIR + tilesContent %>"></jsp:include>
+			<div id="dotAjaxMainHangerDiv">
+				<div id="dotAjaxMainDiv" dojoType="dojox.layout.ContentPane" style="overflow: visible;">
+					<jsp:include page="<%= Constants.TEXT_HTML_DIR + tilesContent %>"></jsp:include>
+				</div>
+			</div>
 		</div>
 		
 		<div>

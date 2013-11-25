@@ -3504,6 +3504,20 @@
 		</security-role-ref>	
 	</portlet>
 
+
+
+
+
+	<portlet>
+		<portlet-name>resttestportlet</portlet-name>
+		<display-name>REST_TEST</display-name>
+		<portlet-class>com.dotcms.rest.RestTestPortlet</portlet-class>
+
+	</portlet>
+
+
+
+
 	<custom-window-state>
 		<window-state>exclusive</window-state>
 	</custom-window-state>
