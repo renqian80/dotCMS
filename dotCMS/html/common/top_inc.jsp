@@ -122,6 +122,7 @@ THIS FILE AND ITS INCLUDES
 		dojo.require("dojo.data.ItemFileReadStore");
 		dojo.require("dijit.form.Form");
 		dojo.require("dojo.io.script");
+		dojo.require("dojo.hash");
 		
 		dojo.addOnLoad(function () {
 			dojo.global.DWRUtil = dwr.util;
