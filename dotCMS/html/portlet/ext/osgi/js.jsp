@@ -9,11 +9,11 @@ dojo.require("dijit.form.Button");
 dojo.require("dojox.form.Uploader");
 dojo.require("dojox.embed.Flash");
 dojo.require("dojo.io.iframe");
-dojo.subscribe("/dojo/hashchange", this, function(hash){mainAdmin.refresh();});
+// dojo.subscribe("/dojo/hashchange", this, function(hash){osgiAdmin.refresh();});
 
 
 
-dojo.declare("dotcms.dijit.osgi.MainAdmin", null, {
+dojo.declare("dotcms.dijit.osgi.osgiAdmin", null, {
 
 	baseDiv : "osgiBundles",
 	constructor : function() {
@@ -66,7 +66,7 @@ dojo.declare("dotcms.dijit.osgi.Bundles", null, {
 
 	show : function() {
 		var href = this.baseJsp;
-		mainAdmin.show(href);
+		osgiAdmin.show(href);
 	},
 
 	undeploy : function (jarName){
@@ -277,7 +277,7 @@ dojo.declare("dotcms.dijit.osgi.Bundles", null, {
 dojo.require("dotcms.dojo.push.PushHandler");
 var pushHandler = new dotcms.dojo.push.PushHandler('<%=LanguageUtil.get(pageContext, "Remote-Publish")%>');
 
-var mainAdmin = new dotcms.dijit.osgi.MainAdmin({});
+var osgiAdmin = new dotcms.dijit.osgi.osgiAdmin({});
 var bundles = new dotcms.dijit.osgi.Bundles({});
 
 
