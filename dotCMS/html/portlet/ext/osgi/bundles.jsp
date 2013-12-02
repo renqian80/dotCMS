@@ -44,12 +44,6 @@ states.put(Bundle.START_TRANSIENT, LanguageUtil.get(pageContext, "OSGI-Bundles-S
 states.put(Bundle.STOP_TRANSIENT, LanguageUtil.get(pageContext, "OSGI-Bundles-State-StopTransient"));
 %>
 
-<div class="buttonBoxLeft">
-	<div dojoType="dojo.data.ItemFileReadStore" jsId="test" url="/html/portlet/ext/osgi/available_bundles_json.jsp"></div>
-	<%= LanguageUtil.get(pageContext,"OSGI-AVAIL-BUNDLES") %> : <input dojoType="dijit.form.ComboBox" store="test" searchAttr="label" name="availBundlesCombo" id="availBundlesCombo">
-	<button dojoType="dijit.form.Button" onclick="javascript:bundles.deploy()"><%=LanguageUtil.get(pageContext, "OSGI-Load-Bundle")%></button>
-
-</div>
 
 <script language="Javascript">
 	/**
@@ -66,14 +60,85 @@ states.put(Bundle.STOP_TRANSIENT, LanguageUtil.get(pageContext, "OSGI-Bundles-St
 	});
 </script> 
 
-<div class="buttonBoxRight">
-	<button dojoType="dijit.form.Button" onClick="javascript:dijit.byId('uploadOSGIDialog').show()" iconClass="plusIcon" type="button"><%=LanguageUtil.get(pageContext, "OSGI-Upload-Bundle")%></button>
-	<button dojoType="dijit.form.Button" onClick="bundles.reboot(true);" iconClass="resetIcon" type="button"><%=LanguageUtil.get(pageContext, "OSGI-restart-framework")%></button>
-	<button dojoType="dijit.form.Button" onClick="bundles.extraPackages();" iconClass="editIcon" type="button"><%=LanguageUtil.get(pageContext, "OSGI-extra-packages")%></button>
-	<button dojoType="dijit.form.Button" onClick="mainAdmin.refresh();" iconClass="resetIcon" type="button"><%=LanguageUtil.get(pageContext, "Refresh")%></button>
+
+<div class="portlet-wrapper">
+
+	<div class="yui-b portlet-toolbar">
+		<div style="float:right;">
+			<button dojoType="dijit.form.Button" onClick="javascript:dijit.byId('uploadOSGIDialog').show()" iconClass="plusIcon" type="button"><%=LanguageUtil.get(pageContext, "OSGI-Upload-Bundle")%></button>
+			<button dojoType="dijit.form.Button" onClick="bundles.reboot(true);" iconClass="resetIcon" type="button"><%=LanguageUtil.get(pageContext, "OSGI-restart-framework")%></button>
+			<button dojoType="dijit.form.Button" onClick="bundles.extraPackages();" iconClass="editIcon" type="button"><%=LanguageUtil.get(pageContext, "OSGI-extra-packages")%></button>
+
+		</div>
+		
+		<div class="float:left;">
+			<div dojoType="dojo.data.ItemFileReadStore" jsId="test" url="/html/portlet/ext/osgi/available_bundles_json.jsp"></div>
+			<%= LanguageUtil.get(pageContext,"OSGI-AVAIL-BUNDLES") %> : <input dojoType="dijit.form.ComboBox" store="test" searchAttr="label" name="availBundlesCombo" id="availBundlesCombo">
+			<button dojoType="dijit.form.Button" onclick="javascript:bundles.deploy()"><%=LanguageUtil.get(pageContext, "OSGI-Load-Bundle")%></button>
+		</div>
+		<div class="clear"></div>
+	</div>
+
+
+	<table class="listingTable" style="margin-top:20px;" id="bundlesTable">
+		<tr>
+			<th><%=LanguageUtil.get(pageContext, "OSGI-Name")%></th>
+			<th><%=LanguageUtil.get(pageContext, "OSGI-State")%></th>
+			<th><%=LanguageUtil.get(pageContext, "OSGI-Jar")%></th>
+			<th><%=LanguageUtil.get(pageContext, "OSGI-Actions")%></th>
+		</tr>
+		<%boolean hasBundles = false; %>
+		<%  int i = 0;
+	        for(Bundle b : ba){
+	            String separator = File.separator;
+	            if (b.getLocation().contains( "/" )) {
+	                separator = "/";
+	            }
+	            String jarFile = b.getLocation().contains( separator ) ? b.getLocation().substring( b.getLocation().lastIndexOf( separator ) + 1 ) : "System";
+	    %>
+			<%if(ignoreBuns.contains(b.getSymbolicName()) ){continue;} %>
+			<% hasBundles = true; %>
+			<tr id="tr<%=jarFile%>">
+				<td><%=b.getSymbolicName()%></td>
+				<td><%=states.get(b.getState())%></td>
+				<td><%=jarFile%></td>
+				<td>
+					<%if(b.getState() != Bundle.ACTIVE){ %><a href="javascript:bundles.start('<%= b.getBundleId() %>')"><%=LanguageUtil.get(pageContext, "OSGI-Start")%></a><% } %>
+					<%if(b.getState() == Bundle.ACTIVE){ %><a href="javascript:bundles.stop('<%= b.getBundleId() %>')"><%=LanguageUtil.get(pageContext, "OSGI-Stop")%></a><% } %>
+					<%if(b.getLocation().contains(separator) && b.getLocation().contains(separator + "load" + separator)){ %>&nbsp;|&nbsp;<a href="javascript:bundles.undeploy('<%=b.getLocation().substring(b.getLocation().lastIndexOf(separator) + 1)%>')"><%=LanguageUtil.get(pageContext, "OSGI-Undeploy")%></a><%} %>
+				</td>
+			</tr>
+	        <script type="text/javascript">
+	
+	            <%if(b.getLocation().contains(separator) && b.getLocation().contains(separator + "load" + separator)){ %>
+	                if(enterprise) {
+	                    popupMenus += "<div dojoType=\"dijit.Menu\" class=\"dotContextMenu\" id=\"popupTr<%=i++%>\" contextMenuForWindow=\"false\" style=\"display: none;\" targetNodeIds=\"tr<%=jarFile%>\">";
+	                    if (sendingEndpoints) {
+	                        popupMenus += "<div dojoType=\"dijit.MenuItem\" iconClass=\"sServerIcon\" onClick=\"javascript:bundles.remotePublishBundle('<%=jarFile%>');\"><%=LanguageUtil.get(pageContext, "Remote-Publish") %></div>";
+	                    }
+	                    popupMenus += "<div dojoType=\"dijit.MenuItem\" iconClass=\"bundleIcon\" onClick=\"javascript:bundles.addToBundlePlugin('<%=jarFile%>');\"><%=LanguageUtil.get(pageContext, "Add-To-Bundle") %></div>";
+	                    popupMenus += "</div>";
+	
+	                    popupMenusDiv = document.getElementById("popup_menus");
+	                    popupMenusDiv.innerHTML = popupMenus;
+	                }
+	            <%} %>
+	        </script>
+		<%}%>
+		<%if(!hasBundles){ %>
+			<tr>
+				<td colspan="100" align="center"><%=LanguageUtil.get(pageContext, "No-Results-Found")%></td>
+			</tr>
+		<%}%>
+	</table>
 </div>
 
-<div class="clear" style="height:40px;">&nbsp;</div>
+<div id="savingOSGIDialog" dojoType="dijit.Dialog" disableCloseButton="true" title="OSGI" style="display: none;">
+	<div dojoType="dijit.ProgressBar" style="width:200px;text-align:center;" indeterminate="true" jsId="saveProgress" id="saveProgress"></div>
+</div>
+
+
+<div id="popup_menus"></div>
 
 <div id="uploadOSGIDialog" dojoType="dijit.Dialog" disableCloseButton="true" title="<%=LanguageUtil.get(pageContext, "OSGI-Upload-Bundle")%>" style="display: none;">
 	<div style="padding:30px 15px;">
@@ -103,65 +168,6 @@ states.put(Bundle.STOP_TRANSIENT, LanguageUtil.get(pageContext, "OSGI-Bundles-St
     </div>
 </div>
 
-<table class="listingTable" style="margin:0 0 25px 0;" id="bundlesTable">
-	<tr>
-		<th><%=LanguageUtil.get(pageContext, "OSGI-Name")%></th>
-		<th><%=LanguageUtil.get(pageContext, "OSGI-State")%></th>
-		<th><%=LanguageUtil.get(pageContext, "OSGI-Jar")%></th>
-		<th><%=LanguageUtil.get(pageContext, "OSGI-Actions")%></th>
-	</tr>
-	<%boolean hasBundles = false; %>
-	<%  int i = 0;
-        for(Bundle b : ba){
-            String separator = File.separator;
-            if (b.getLocation().contains( "/" )) {
-                separator = "/";
-            }
-            String jarFile = b.getLocation().contains( separator ) ? b.getLocation().substring( b.getLocation().lastIndexOf( separator ) + 1 ) : "System";
-    %>
-		<%if(ignoreBuns.contains(b.getSymbolicName()) ){continue;} %>
-		<% hasBundles = true; %>
-		<tr id="tr<%=jarFile%>">
-			<td><%=b.getSymbolicName()%></td>
-			<td><%=states.get(b.getState())%></td>
-			<td><%=jarFile%></td>
-			<td>
-				<%if(b.getState() != Bundle.ACTIVE){ %><a href="javascript:bundles.start('<%= b.getBundleId() %>')"><%=LanguageUtil.get(pageContext, "OSGI-Start")%></a><% } %>
-				<%if(b.getState() == Bundle.ACTIVE){ %><a href="javascript:bundles.stop('<%= b.getBundleId() %>')"><%=LanguageUtil.get(pageContext, "OSGI-Stop")%></a><% } %>
-				<%if(b.getLocation().contains(separator) && b.getLocation().contains(separator + "load" + separator)){ %>&nbsp;|&nbsp;<a href="javascript:bundles.undeploy('<%=b.getLocation().substring(b.getLocation().lastIndexOf(separator) + 1)%>')"><%=LanguageUtil.get(pageContext, "OSGI-Undeploy")%></a><%} %>
-			</td>
-		</tr>
-        <script type="text/javascript">
-
-            <%if(b.getLocation().contains(separator) && b.getLocation().contains(separator + "load" + separator)){ %>
-                if(enterprise) {
-                    popupMenus += "<div dojoType=\"dijit.Menu\" class=\"dotContextMenu\" id=\"popupTr<%=i++%>\" contextMenuForWindow=\"false\" style=\"display: none;\" targetNodeIds=\"tr<%=jarFile%>\">";
-                    if (sendingEndpoints) {
-                        popupMenus += "<div dojoType=\"dijit.MenuItem\" iconClass=\"sServerIcon\" onClick=\"javascript:bundles.remotePublishBundle('<%=jarFile%>');\"><%=LanguageUtil.get(pageContext, "Remote-Publish") %></div>";
-                    }
-                    popupMenus += "<div dojoType=\"dijit.MenuItem\" iconClass=\"bundleIcon\" onClick=\"javascript:bundles.addToBundlePlugin('<%=jarFile%>');\"><%=LanguageUtil.get(pageContext, "Add-To-Bundle") %></div>";
-                    popupMenus += "</div>";
-
-                    popupMenusDiv = document.getElementById("popup_menus");
-                    popupMenusDiv.innerHTML = popupMenus;
-                }
-            <%} %>
-        </script>
-	<%}%>
-	<%if(!hasBundles){ %>
-		<tr>
-			<td colspan="100" align="center"><%=LanguageUtil.get(pageContext, "No-Results-Found")%></td>
-		</tr>
-	<%}%>
-</table>
-
-
-<div id="savingOSGIDialog" dojoType="dijit.Dialog" disableCloseButton="true" title="OSGI" style="display: none;">
-	<div dojoType="dijit.ProgressBar" style="width:200px;text-align:center;" indeterminate="true" jsId="saveProgress" id="saveProgress"></div>
-</div>
-
-
-<div id="popup_menus"></div>
 <form id="remotePublishForm">
     <input name="assetIdentifier" id="assetIdentifier" type="hidden" value="">
     <input name="remotePublishDate" id="remotePublishDate" type="hidden" value="">
