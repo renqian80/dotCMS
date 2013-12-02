@@ -161,56 +161,53 @@ function processDelete(inode, referer) {
 <liferay:param name="box_title" value='<%= LanguageUtil.get(pageContext, "view-templates-all") %>' />
 
 <form id="fm" method="post" >
-<table style="width:100%">
-	<tr>
-		<td style="white-space: nowrap;">
-			<input type="hidden" name="resetQuery" value="">
-			<input type="hidden" name="host_id" id="host_id" value="<%=(String)session.getAttribute(com.dotmarketing.util.WebKeys.CMS_SELECTED_HOST_ID)%>">
-			<input type="text" dojoType="dijit.form.TextBox" style="width:175px;" name="query" value="<%= com.dotmarketing.util.UtilMethods.isSet(query) ? query : "" %>">
-		    <button dojoType="dijit.form.Button"  onClick="submitfm()" iconClass="searchIcon">
-		       <%= UtilMethods.escapeSingleQuotes(LanguageUtil.get(pageContext, "Search" )) %>
-		    </button>
-		
-			<button dojoType="dijit.form.Button" onClick="resetSearch()" iconClass="resetIcon">
-		       <%= UtilMethods.escapeSingleQuotes(LanguageUtil.get(pageContext, "Reset")) %>
-		    </button>
-		
-			<input type="hidden" name="pageNumber" value="<%=pageNumber%>">
-		
-		</td>
-		<td style="text-align: right;white-space: nowrap;">
-			<input  dojoType="dijit.form.CheckBox" type="checkbox" name="showDeleted" id="showDeleted" onClick="javascript:submitfm();" <%= (showDeleted!=null) && (showDeleted.equals("true")) ? "checked" : "" %> value="true" />
-			<label for="showDeleted" style="font-size:85%;"><%= LanguageUtil.get(pageContext, "Show-Archived") %></label>&nbsp; &nbsp; &nbsp;
-	
-			<% if((Boolean)request.getAttribute(com.dotmarketing.util.WebKeys.TEMPLATE_CAN_DESIGN) || (Boolean)request.getAttribute(com.dotmarketing.util.WebKeys.TEMPLATE_CAN_ADD)) { %>
-				<div dojoType="dijit.form.DropDownButton" data-dojo-props="iconClass:'plusIcon', showLabel:true">
-					<span><%= UtilMethods.escapeSingleQuotes(LanguageUtil.get(pageContext, "add-template")) %></span>
-					<div dojoType="dijit.Menu">
-		                <% if((Boolean)request.getAttribute(com.dotmarketing.util.WebKeys.TEMPLATE_CAN_DESIGN)) { %>
-							<div dojoType="dijit.MenuItem" onClick="designAsset" iconClass="designTemplateIcon">
-						        <%= UtilMethods.escapeSingleQuotes(LanguageUtil.get(pageContext, "design-template")) %>
-						    </div>
-						<% } %>
-						
-		                <% if((Boolean)request.getAttribute(com.dotmarketing.util.WebKeys.TEMPLATE_CAN_ADD)) { %>
-			                <div dojoType="dijit.MenuItem" onClick="addAsset" iconClass="templateIcon">
-			                    <span ></span> <%= LanguageUtil.get(pageContext,"code-template") %>
-			                </div>
-			            <% } %>
-					</div>
-				</div>
-			<% } %>
+	<table style="width:100%">
+		<tr>
+			<td style="white-space: nowrap;">
+				<input type="hidden" name="resetQuery" value="">
+				<input type="hidden" name="host_id" id="host_id" value="<%=(String)session.getAttribute(com.dotmarketing.util.WebKeys.CMS_SELECTED_HOST_ID)%>">
+				<input type="text" dojoType="dijit.form.TextBox" style="width:175px;" name="query" value="<%= com.dotmarketing.util.UtilMethods.isSet(query) ? query : "" %>">
+			    <button dojoType="dijit.form.Button"  onClick="submitfm()" iconClass="searchIcon">
+			       <%= UtilMethods.escapeSingleQuotes(LanguageUtil.get(pageContext, "Search" )) %>
+			    </button>
 			
-		</td>
-	</tr>
-</table>
+				<button dojoType="dijit.form.Button" onClick="resetSearch()" iconClass="resetIcon">
+			       <%= UtilMethods.escapeSingleQuotes(LanguageUtil.get(pageContext, "Reset")) %>
+			    </button>
+			
+				<input type="hidden" name="pageNumber" value="<%=pageNumber%>">
+			
+			</td>
+			<td style="text-align: right;white-space: nowrap;">
+				<input  dojoType="dijit.form.CheckBox" type="checkbox" name="showDeleted" id="showDeleted" onClick="javascript:submitfm();" <%= (showDeleted!=null) && (showDeleted.equals("true")) ? "checked" : "" %> value="true" />
+				<label for="showDeleted" style="font-size:85%;"><%= LanguageUtil.get(pageContext, "Show-Archived") %></label>&nbsp; &nbsp; &nbsp;
+		
+				<% if((Boolean)request.getAttribute(com.dotmarketing.util.WebKeys.TEMPLATE_CAN_DESIGN) || (Boolean)request.getAttribute(com.dotmarketing.util.WebKeys.TEMPLATE_CAN_ADD)) { %>
+					<div dojoType="dijit.form.DropDownButton" data-dojo-props="iconClass:'plusIcon', showLabel:true">
+						<span><%= UtilMethods.escapeSingleQuotes(LanguageUtil.get(pageContext, "add-template")) %></span>
+						<div dojoType="dijit.Menu">
+			                <% if((Boolean)request.getAttribute(com.dotmarketing.util.WebKeys.TEMPLATE_CAN_DESIGN)) { %>
+								<div dojoType="dijit.MenuItem" onClick="designAsset" iconClass="designTemplateIcon">
+							        <%= UtilMethods.escapeSingleQuotes(LanguageUtil.get(pageContext, "design-template")) %>
+							    </div>
+							<% } %>
+							
+			                <% if((Boolean)request.getAttribute(com.dotmarketing.util.WebKeys.TEMPLATE_CAN_ADD)) { %>
+				                <div dojoType="dijit.MenuItem" onClick="addAsset" iconClass="templateIcon">
+				                    <span ></span> <%= LanguageUtil.get(pageContext,"code-template") %>
+				                </div>
+				            <% } %>
+						</div>
+					</div>
+				<% } %>
+				
+			</td>
+		</tr>
+	</table>
 
 
-	</div>
-	<div class="yui-u" style="text-align:right; white-space:nowrap" >
+	<div class="yui-u" style="text-align:right; white-space:nowrap" >&nbsp;</div>
 
-	</div>
-</div>
 </form>
 
 <form id="fm_publish" method="post">
