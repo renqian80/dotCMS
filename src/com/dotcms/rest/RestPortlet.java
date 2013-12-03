@@ -26,14 +26,14 @@ import javax.ws.rs.core.CacheControl;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
-import javax.portlet.Portlet;
+
+import com.dotmarketing.business.APILocator;
 import com.dotmarketing.business.web.WebAPILocator;
 import com.dotmarketing.cmis.proxy.DotInvocationHandler;
 import com.dotmarketing.cmis.proxy.DotResponseProxy;
 import com.dotmarketing.exception.DotDataException;
 import com.dotmarketing.exception.DotRuntimeException;
 import com.dotmarketing.exception.DotSecurityException;
-import com.dotmarketing.util.Config;
 import com.dotmarketing.util.Logger;
 import com.dotmarketing.util.UtilMethods;
 import com.liferay.portal.PortalException;
@@ -41,18 +41,21 @@ import com.liferay.portal.SystemException;
 import com.liferay.portal.model.User;
 import com.liferay.portlet.RenderRequestImpl;
 import com.liferay.portlet.RenderResponseImpl;
+import com.sun.jersey.api.core.DefaultResourceConfig;
+import com.sun.jersey.api.core.PackagesResourceConfig;
 
 public abstract class RestPortlet extends WebResource implements Portlet, Cloneable {
+
+	public static final String PORTLET_ID = "PORTLET_ID";
+	public static final String VIEW_JSP = "VIEW_JSP";
 
 	@Override
 	public void destroy() {
 
 	}
 
-
 	@Override
 	public void init(PortletConfig config) throws PortletException {
-
 
 	}
 
@@ -74,9 +77,8 @@ public abstract class RestPortlet extends WebResource implements Portlet, Clonea
 		HttpServletRequest request = ((RenderRequestImpl) req).getHttpServletRequest();
 		HttpServletResponse response = ((RenderResponseImpl) res).getHttpServletResponse();
 
-
 		try {
-			response.getWriter().write(getJspResponse(request, "render"));
+			response.getWriter().write(getJspResponse(request, this.getClass().getSimpleName(), "render"));
 		} catch (ServletException e) {
 
 			e.printStackTrace();
@@ -84,52 +86,74 @@ public abstract class RestPortlet extends WebResource implements Portlet, Clonea
 
 	}
 
-	
-	
-	private String getJspResponse(HttpServletRequest request, String jspName) throws ServletException, IOException{
-		
-		
+	private String getJspResponse(HttpServletRequest request, String portletId, String jspName) throws ServletException,
+			IOException {
+
+		@SuppressWarnings("rawtypes")
 		InvocationHandler dotInvocationHandler = new DotInvocationHandler(new HashMap());
 
 		DotResponseProxy responseProxy = (DotResponseProxy) Proxy.newProxyInstance(DotResponseProxy.class.getClassLoader(),
 				new Class[] { DotResponseProxy.class }, dotInvocationHandler);
-		
+
 		jspName = (!UtilMethods.isSet(jspName)) ? "render" : jspName;
-		
-		String path = "/WEB-INF/jsp/" + getName() + "/" + jspName + ".jsp";
-		
-		
-		
+
+		String path = "/WEB-INF/jsp/" + portletId.toLowerCase() + "/" + jspName + ".jsp";
+
 		HttpServletResponseWrapper response = new ResponseWrapper(responseProxy);
 		Logger.debug(this.getClass(), "trying: " + path);
 
-
-
 		try {
 			request.getRequestDispatcher(path).include(request, response);
+			return ((ResponseWrapper) response).getResponseString();
 		} catch (Exception e) {
+			Logger.debug(this.getClass(), "unable to parse: " + path);
 			Logger.error(this.getClass(), e.toString());
+			StringWriter sw = new StringWriter();
+			sw.append("<div style='padding:30px;'>");
+			sw.append("unable to parse: <a href='" + path + "' target='debug'>" + path + "</a>");
+			sw.append("<hr>");
+			sw.append("<pre style='width:90%;overflow:hidden;white-space:pre-wrap'>");
+			sw.append(e.toString());
+
+			sw.append("</pre>");
+			sw.append("</div>");
+			return sw.toString();
 
 		}
-		return ((ResponseWrapper) response).getResponseString();
-
 
 	}
-	
-	
-	
-	
+
 	@GET
 	@Path("/layout/{params:.*}")
 	@Produces("text/html")
 	public Response getLayout(@Context HttpServletRequest request, @PathParam("params") String params)
-			throws DotDataException, DotSecurityException, ServletException, IOException, DotRuntimeException, PortalException, SystemException {
+			throws DotDataException, DotSecurityException, ServletException, IOException, DotRuntimeException,
+			PortalException, SystemException {
 
-		
 		User user = WebAPILocator.getUserWebAPI().getLoggedInUser(request);
-		
+
+		com.liferay.portal.model.Portlet portlet = null;
+		String jspName = null;
+		request.setAttribute(VIEW_JSP, "render");
 		try {
-			if (user == null ||  !com.dotmarketing.business.APILocator.getLayoutAPI().doesUserHaveAccessToPortlet(getName() , user)) {
+			String[] x = params.split("/");
+			portlet = APILocator.getPortletAPI().findPortlet(x[0]);
+			request.setAttribute(PORTLET_ID, portlet.getPortletId());
+			jspName = x[1];
+			request.setAttribute(VIEW_JSP, jspName);
+		} catch (ArrayIndexOutOfBoundsException aiob) {
+
+			Logger.debug(this.getClass(), aiob.getMessage());
+		} catch (Exception e) {
+			com.dotmarketing.util.Logger.error(this.getClass(), e.getMessage(), e);
+			ResponseBuilder builder = Response.status(500);
+			return builder.build();
+		}
+
+		try {
+			if (user == null
+					|| !com.dotmarketing.business.APILocator.getLayoutAPI().doesUserHaveAccessToPortlet(
+							portlet.getPortletId(), user)) {
 				Logger.error(this.getClass(), "Invalid User  " + user + "  attempting to access this portlet");
 				ResponseBuilder builder = Response.status(403);
 				return builder.build();
@@ -139,10 +163,8 @@ public abstract class RestPortlet extends WebResource implements Portlet, Clonea
 			ResponseBuilder builder = Response.status(500);
 			return builder.build();
 		}
-		
-		
-		
-		ResponseBuilder builder = Response.ok(getJspResponse(request, params), "text/html");
+
+		ResponseBuilder builder = Response.ok(getJspResponse(request, portlet.getPortletId(), jspName), "text/html");
 		CacheControl cc = new CacheControl();
 		cc.setNoCache(true);
 
@@ -156,7 +178,6 @@ public abstract class RestPortlet extends WebResource implements Portlet, Clonea
 
 		public ResponseWrapper(HttpServletResponse response) {
 			super(response);
-
 		}
 
 		public String getResponseString() {
@@ -168,18 +189,6 @@ public abstract class RestPortlet extends WebResource implements Portlet, Clonea
 			PrintWriter pw = new PrintWriter(writer);
 			return pw;
 		}
-
-	}
-
-	/**
-	 * Returns the proper name for the folder for the jsps
-	 * 
-	 * @return
-	 */
-
-	public String getName() {
-
-		return this.getClass().getSimpleName().toLowerCase();
 
 	}
 

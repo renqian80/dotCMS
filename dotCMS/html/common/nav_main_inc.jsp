@@ -51,8 +51,10 @@
 							}
 							Object obj = Class.forName(p.getPortletClass()).newInstance();
 							if(obj instanceof RestPortlet){
-								linkHREF =  "javascript:dotAjaxNav.show('/api/"+ ((RestPortlet)obj).getName().replaceAll("portlet", "") + "/layout/', '" + l + "');";
+								linkHREF =  "javascript:dotAjaxNav.show('/api/portlet/"+ portletIDs.get(i) + "/', '" + l + "');";
 							}%>
+							
+							
 							
 							<li class="level2 dotCMS_<%=portletIDs.get(i)%>"><a href="<%=linkHREF %>"><span></span><%=linkName %></a></li>
 						<%} %>
