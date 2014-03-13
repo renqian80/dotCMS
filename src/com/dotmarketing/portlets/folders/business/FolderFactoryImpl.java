@@ -109,7 +109,6 @@ public class FolderFactoryImpl extends FolderFactory {
 			catch(Exception e){
 				throw new DotDataException(e.getMessage());
 			}
-
 		}
 		return folder;
 	}

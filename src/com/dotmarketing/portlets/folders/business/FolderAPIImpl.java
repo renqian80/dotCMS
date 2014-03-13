@@ -468,7 +468,6 @@ public class FolderAPIImpl implements FolderAPI  {
 	 */
 
 	public Folder find(String id, User user, boolean respectFrontEndPermissions)throws DotSecurityException, DotDataException {
-
 		Folder folder= ffac.find(id);
 		if (!papi.doesUserHavePermission(folder, PermissionAPI.PERMISSION_READ, user)) {
 			throw new DotSecurityException("User " + user + " does not have permission to read " + folder.getName());
