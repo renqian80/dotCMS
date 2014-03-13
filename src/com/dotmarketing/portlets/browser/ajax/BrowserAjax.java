@@ -43,11 +43,10 @@ import com.dotmarketing.util.UtilMethods;
 import com.dotmarketing.viewtools.BrowserAPI;
 import com.liferay.portal.PortalException;
 import com.liferay.portal.SystemException;
-import com.liferay.portal.language.LanguageUtil;
 import com.liferay.portal.model.User;
 import com.liferay.portal.struts.ActionException;
-import com.dotcms.repackage.dwr_3rc2modified.org.directwebremoting.WebContext;
-import com.dotcms.repackage.dwr_3rc2modified.org.directwebremoting.WebContextFactory;
+import org.directwebremoting.WebContext;
+import org.directwebremoting.WebContextFactory;
 
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
@@ -245,17 +244,8 @@ public class BrowserAjax {
     }
 
 	public Map<String, Object> getFolderContent (String folderId, int offset, int maxResults, String filter, List<String> mimeTypes,
-			List<String> extensions, boolean showArchived, boolean noFolders, boolean onlyFiles, String sortBy, boolean sortByDesc, boolean excludeLinks) throws DotHibernateException, DotSecurityException, DotDataException {
-
-		WebContext ctx = WebContextFactory.get();
-		HttpServletRequest req = ctx.getHttpServletRequest();
-		User usr = getUser(req);
-
-		return browserAPI.getFolderContent(usr, folderId, offset, maxResults, filter, mimeTypes, extensions, showArchived, noFolders, onlyFiles, sortBy, sortByDesc, excludeLinks);
-	}
-
-	public Map<String, Object> getFolderContent (String folderId, int offset, int maxResults, String filter, List<String> mimeTypes,
 			List<String> extensions, boolean showArchived, boolean noFolders, boolean onlyFiles, String sortBy, boolean sortByDesc) throws DotHibernateException, DotSecurityException, DotDataException {
+
 
 		WebContext ctx = WebContextFactory.get();
 		HttpServletRequest req = ctx.getHttpServletRequest();
@@ -263,9 +253,8 @@ public class BrowserAjax {
 
 		return browserAPI.getFolderContent(usr, folderId, offset, maxResults, filter, mimeTypes, extensions, showArchived, noFolders, onlyFiles, sortBy, sortByDesc);
 	}
-
-	public void saveFileAction(String selectedItem,String wfActionAssign,String wfActionId,String wfActionComments, String wfConId, String wfPublishDate,
-			String wfPublishTime, String wfExpireDate, String wfExpireTime, String wfNeverExpire, String whereToSend, String forcePush) throws  DotSecurityException, ServletException{
+	public void saveFileAction(String selectedItem,String wfActionAssign,String wfActionId,String wfActionComments, String wfConId, String wfPublishDate, 
+			String wfPublishTime, String wfExpireDate, String wfExpireTime, String wfNeverExpire) throws  DotSecurityException, ServletException{
 		WebContext ctx = WebContextFactory.get();
         User usr = getUser(ctx.getHttpServletRequest());
 		Contentlet c = null;
@@ -279,14 +268,12 @@ public class BrowserAjax {
 			c.setStringProperty("wfActionId", action.getId());
 			c.setStringProperty("wfActionComments", wfActionComments);
 			c.setStringProperty("wfActionAssign", wfActionAssign);
-
+			
 			c.setStringProperty("wfPublishDate", wfPublishDate);
 			c.setStringProperty("wfPublishTime", wfPublishTime);
 			c.setStringProperty("wfExpireDate", wfExpireDate);
 			c.setStringProperty("wfExpireTime", wfExpireTime);
 			c.setStringProperty("wfNeverExpire", wfNeverExpire);
-			c.setStringProperty("whereToSend", whereToSend);
-			c.setStringProperty("forcePush", forcePush);
 
 			wapi.fireWorkflowNoCheckin(c, usr);
 
@@ -409,7 +396,6 @@ public class BrowserAjax {
     	result.put("extension", "");
     	result.put("newName", newName);
     	result.put("inode", folder.getInode());
-    	result.put("assetType", "folder");
     	try {
 			if (folderAPI.renameFolder(folder, newName,usr,false)) {
 				result.put("result", 0);
@@ -484,14 +470,10 @@ public class BrowserAjax {
      * @return Confirmation message
      * @throws Exception
      */
-    public String moveFolder ( String inode, String newFolder ) throws Exception {
+    public boolean moveFolder ( String inode, String newFolder ) throws Exception {
 
         HibernateUtil.startTransaction();
-        
-        Locale requestLocale = WebContextFactory.get().getHttpServletRequest().getLocale();
-        String successString = UtilMethods.escapeSingleQuotes(LanguageUtil.get(requestLocale, "Folder-moved"));
-        String errorString = UtilMethods.escapeSingleQuotes(LanguageUtil.get(requestLocale, "Failed-to-move-another-folder-with-the-same-name-already-exists-in-the-destination"));
-        
+
         try {
             HttpServletRequest req = WebContextFactory.get().getHttpServletRequest();
             User user = getUser( req );
@@ -511,7 +493,7 @@ public class BrowserAjax {
 
                 if ( !folderAPI.move( folder, parentHost, user, respectFrontendRoles ) ) {
                     //A folder with the same name already exists on the destination
-                    return errorString;
+                    return false;
                 }
                 refreshIndex(null, null, user, parentHost, folder );
             } else {
@@ -524,29 +506,27 @@ public class BrowserAjax {
 
                 if ( parentFolder.getInode().equalsIgnoreCase( folder.getInode() ) ) {
                     //Trying to move a folder over itself
-                    return errorString;
+                    return false;
                 }
                 if ( folderAPI.isChildFolder( parentFolder, folder ) ) {
                     //Trying to move a folder over one of its children
-                    return errorString;
+                    return false;
                 }
 
                 if ( !folderAPI.move( folder, parentFolder, user, respectFrontendRoles ) ) {
                     //A folder with the same name already exists on the destination
-                    return errorString;
+                    return false;
                 }
-
+                
                 refreshIndex(null, parentFolder, user, null, folder );
-                APILocator.getPermissionAPI().resetPermissionReferences(folder);
             }
         } catch ( Exception e ) {
             HibernateUtil.rollbackTransaction();
-            return e.getLocalizedMessage();
         } finally {
             HibernateUtil.commitTransaction();
         }
 
-        return successString;
+        return true;
     }
 
     public Map<String, Object> renameFile (String inode, String newName) throws Exception {
@@ -564,22 +544,16 @@ public class BrowserAjax {
     	Identifier id  = APILocator.getIdentifierAPI().findFromInode(inode);
     	if(id!=null && id.getAssetType().equals("contentlet")){
     		Contentlet cont  = APILocator.getContentletAPI().find(inode, user, false);
-    		String lName = (String) cont.get(FileAssetAPI.FILE_NAME_FIELD);
-    		result.put("lastName", lName.substring(0, lName.lastIndexOf(".")));
+    		result.put("lastName", cont.get(FileAssetAPI.FILE_NAME_FIELD));
     		result.put("extension", UtilMethods.getFileExtension(cont.getStringProperty(FileAssetAPI.FILE_NAME_FIELD)));
     		result.put("newName", newName);
     		result.put("inode", inode);
     		if(!cont.isLocked()){
-    			try{
-    				if(APILocator.getFileAssetAPI().renameFile(cont, newName, user, false)){
-        				result.put("result", 0);
-        			}else{
-        				result.put("result", 1);
-        				result.put("errorReason", "Another file with the same name already exists on this folder");
-        			}
-    			}catch(Exception e){
+    			if(APILocator.getFileAssetAPI().renameFile(cont, newName, user, false)){
+    				result.put("result", 0);
+    			}else{
     				result.put("result", 1);
-    				result.put("errorReason", e.getLocalizedMessage());
+    				result.put("errorReason", "Another file with the same name already exists on this folder");
     			}
     		}else{
     			result.put("result", 1);
@@ -615,82 +589,91 @@ public class BrowserAjax {
      */
     public String copyFile ( String inode, String newFolder ) throws Exception {
 
-        HttpServletRequest req = WebContextFactory.get().getHttpServletRequest();
-        User user = getUser( req );
+    	try{
+    		HttpServletRequest req = WebContextFactory.get().getHttpServletRequest();
+            User user = getUser( req );
 
-        //Contentlet file identifier
-        Identifier id = APILocator.getIdentifierAPI().findFromInode( inode );
+            //Contentlet file identifier
+            Identifier id = APILocator.getIdentifierAPI().findFromInode( inode );
 
-        // gets folder parent
-        Folder parent = null;
-        try {
-            parent = APILocator.getFolderAPI().find( newFolder, user, false );
-        } catch ( Exception ignored ) {
-            //Probably what we have here is a host
-        }
+            // gets folder parent
+            Folder parent = null;
+            try {
+                parent = APILocator.getFolderAPI().find( newFolder, user, false );
+            } catch ( Exception ignored ) {
+                //Probably what we have here is a host
+            }
 
-        Host host = null;
-        if ( parent == null ) {//If we didn't find a parent folder lets verify if this is a host
-            host = APILocator.getHostAPI().find( newFolder, user, false );
-        }
+            Host host = null;
+            if ( parent == null ) {//If we didn't find a parent folder lets verify if this is a host
+                host = APILocator.getHostAPI().find( newFolder, user, false );
+            }
 
-        // Checking permissions
-        String permissionsError = "File-failed-to-copy-check-you-have-the-required-permissions";
-        if ( !permissionAPI.doesUserHavePermission( id, PERMISSION_WRITE, user ) ) {
-            return permissionsError;
-        } else if ( parent != null && !permissionAPI.doesUserHavePermission( parent, PERMISSION_WRITE, user ) ) {
-            return permissionsError;
-        } else if ( host != null && !permissionAPI.doesUserHavePermission( host, PERMISSION_WRITE, user ) ) {
-            return permissionsError;
-        }
+            // Checking permissions
+            String permissionsError = "File-failed-to-copy-check-you-have-the-required-permissions";
+            if ( !permissionAPI.doesUserHavePermission( id, PERMISSION_WRITE, user ) ) {
+                return permissionsError;
+            } else if ( parent != null && !permissionAPI.doesUserHavePermission( parent, PERMISSION_WRITE, user ) ) {
+                return permissionsError;
+            } else if ( host != null && !permissionAPI.doesUserHavePermission( host, PERMISSION_WRITE, user ) ) {
+                return permissionsError;
+            }
 
-        if ( id != null && id.getAssetType().equals( "contentlet" ) ) {
+            if ( id != null && id.getAssetType().equals( "contentlet" ) ) {
 
-            //Getting the contentlet file
-            Contentlet cont = APILocator.getContentletAPI().find( inode, user, false );
+                //Getting the contentlet file
+                Contentlet cont = APILocator.getContentletAPI().find( inode, user, false );
 
-            if ( parent != null ) {
+                if ( parent != null ) {
 
-                FileAsset fileAsset = APILocator.getFileAssetAPI().fromContentlet( cont );
-                if ( UtilMethods.isSet( fileAsset.getFileName() ) && !folderAPI.matchFilter( parent, fileAsset.getFileName() ) ) {
-                    return "message.file_asset.error.filename.filters";
+                    FileAsset fileAsset = APILocator.getFileAssetAPI().fromContentlet( cont );
+                    if ( UtilMethods.isSet( fileAsset.getFileName() ) && !folderAPI.matchFilter( parent, fileAsset.getFileName() ) ) {
+                        return "message.file_asset.error.filename.filters";
+                    }
                 }
+
+                if ( parent != null ) {
+                    APILocator.getContentletAPI().copyContentlet( cont, parent, user, false );
+                } else {
+                    APILocator.getContentletAPI().copyContentlet( cont, host, user, false );
+                }
+                
+                // issues/1788
+                // issues/1967 
+        		
+        		Folder srcFolder = APILocator.getFolderAPI().find(cont.getFolder(),user,false);
+        		refreshIndex(null, parent, user, host, srcFolder );
+
+                
+                return "File-copied";
             }
+
+            File file = (File) InodeFactory.getInode( inode, File.class );
+            // CHECK THE FOLDER PATTERN		//DOTCMS-6017
+            if ( UtilMethods.isSet( file.getFileName() ) && (parent != null && !folderAPI.matchFilter( parent, file.getFileName() )) ) {
+                return "message.file_asset.error.filename.filters";
+            }
+
+            // Checking permissions
+            if ( !permissionAPI.doesUserHavePermission( file, PERMISSION_WRITE, user ) ) {
+                return "File-failed-to-copy-check-you-have-the-required-permissions";
+            }        
+			Logger.error(this, "file " + file+" <----");
+			Logger.error(this, "parent " + parent+" <----");
+			Logger.error(this, "host " + host+" <----");
+            //refreshIndex(file, parent, user, host, null );
 
             if ( parent != null ) {
-                APILocator.getContentletAPI().copyContentlet( cont, parent, user, false );
+                APILocator.getFileAPI().copyFile( file, parent, user, false );
             } else {
-                APILocator.getContentletAPI().copyContentlet( cont, host, user, false );
+                APILocator.getFileAPI().copyFile( file, host, user, false );
             }
-
-            // issues/1788
-            // issues/1967
-
-    		Folder srcFolder = APILocator.getFolderAPI().find(cont.getFolder(),user,false);
-    		refreshIndex(null, parent, user, host, srcFolder );
-
-
             return "File-copied";
-        }
-
-        File file = (File) InodeFactory.getInode( inode, File.class );
-        // CHECK THE FOLDER PATTERN		//DOTCMS-6017
-        if ( UtilMethods.isSet( file.getFileName() ) && (parent != null && !folderAPI.matchFilter( parent, file.getFileName() )) ) {
-            return "message.file_asset.error.filename.filters";
-        }
-
-        // Checking permissions
-        if ( !permissionAPI.doesUserHavePermission( file, PERMISSION_WRITE, user ) ) {
-            return "File-failed-to-copy-check-you-have-the-required-permissions";
-        }
-        refreshIndex(file, parent, user, host, null );
-
-        if ( parent != null ) {
-            APILocator.getFileAPI().copyFile( file, parent, user, false );
-        } else {
-            APILocator.getFileAPI().copyFile( file, host, user, false );
-        }
-        return "File-copied";
+    		
+    	}catch(Exception e){
+    		Logger.error(this, "Error trying to copy the file to folder.", e);
+    	}
+        return "";
     }
 
     /**
@@ -736,12 +719,7 @@ public class BrowserAjax {
             //Getting the contentlet file
             Contentlet contentlet = APILocator.getContentletAPI().find( inode, user, false );
             Folder srcFolder = APILocator.getFolderAPI().find(contentlet.getFolder(),user,false);
-
-            if(contentlet.getFolder().equals("SYSTEM_FOLDER")) {
-            	refreshIndex(null, null, user, APILocator.getHostAPI().find(contentlet.getHost(), user, false), srcFolder );
-            } else {
-            	refreshIndex(null, parent, user, host, srcFolder );
-            }
+    		refreshIndex(null, parent, user, host, srcFolder );
 
             if ( parent != null ) {
                 return APILocator.getFileAssetAPI().moveFile( contentlet, parent, user, false );
@@ -756,7 +734,7 @@ public class BrowserAjax {
         if ( !permissionAPI.doesUserHavePermission( file, PERMISSION_WRITE, user ) ) {
             throw new DotRuntimeException( "The user doesn't have the required permissions." );
         }
-
+        
         refreshIndex(file, parent, user, host, null );
 
         if ( parent != null ) {
@@ -876,9 +854,9 @@ public class BrowserAjax {
         }
 
         if ( parent != null ) {
-            return HTMLPageFactory.moveHTMLPage( page, parent, user );
+            return HTMLPageFactory.moveHTMLPage( page, parent );
         } else {
-            return HTMLPageFactory.moveHTMLPage( page, host, user );
+            return HTMLPageFactory.moveHTMLPage( page, host );
         }
     }
 
@@ -1695,13 +1673,13 @@ public class BrowserAjax {
 		}
 		return foldersToReturn;
 	}
-
+	
 	public void refreshIndex(File file, Folder parent, User user, Host host, Folder folder ) throws Exception {
-
+		
 		Folder srcFolder = folder;
 		if(folder == null){
 			srcFolder = APILocator.getFolderAPI().find(file.getParent(),user,false);
-
+			
 		}
      	// issues/1603 - refresh index for src Folder
         if (srcFolder!=null){

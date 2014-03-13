@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.dotcms.repackage.commons_io_2_0_1.org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FileUtils;
 import org.apache.velocity.runtime.resource.ResourceManager;
 
 import com.dotmarketing.beans.Host;
@@ -165,15 +165,17 @@ public class FileFactoryImpl implements com.dotmarketing.portlets.files.business
 			}
 			WorkingCache.addToWorkingAssetToCache(newFile);
 
-			if (localTransation) {
-                HibernateUtil.commitTransaction();
-            }
 		} catch (Exception e) {
 			if (localTransation) {
 				HibernateUtil.rollbackTransaction();
 			}
 			throw new DotDataException(e.getMessage(),e);
 
+		} finally {
+
+			if (localTransation) {
+				HibernateUtil.commitTransaction();
+			}
 		}
 		return newFile;
 	}
@@ -257,9 +259,9 @@ public class FileFactoryImpl implements com.dotmarketing.portlets.files.business
         String likepattern=RegEX.replaceAll(pattern, "%", "\\*");
         
         String concat;
-        if(DbConnectionFactory.isMySql()){
+        if(DbConnectionFactory.getDBType().equals(DbConnectionFactory.MYSQL)){
             concat=" concat(ii.parent_path, ii.asset_name) ";
-        }else if (DbConnectionFactory.isMsSql()) {
+        }else if (DbConnectionFactory.getDBType().equals(DbConnectionFactory.MSSQL)) {
             concat=" (ii.parent_path + ii.asset_name) ";
         }else {
             concat=" (ii.parent_path || ii.asset_name) ";
@@ -549,8 +551,8 @@ public class FileFactoryImpl implements com.dotmarketing.portlets.files.business
 			// http://jira.dotmarketing.net/browse/DOTCMS-5911
 			String inode = file.getInode();
 			if (UtilMethods.isSet(inode)) {
-				String realAssetPath = APILocator.getFileAPI().getRealAssetPath();
-				java.io.File tumbnailDir = new java.io.File(realAssetPath + java.io.File.separator + "dotGenerated" + java.io.File.separator + inode.charAt(0) + java.io.File.separator + inode.charAt(1));
+				java.io.File tumbnailDir = new java.io.File(Config.CONTEXT.getRealPath("/assets/dotGenerated/" + inode.charAt(0) + "/"
+						+ inode.charAt(1)));
 				if (tumbnailDir != null) {
 					java.io.File[] files = tumbnailDir.listFiles();
 					if (files != null) {
@@ -614,6 +616,7 @@ public class FileFactoryImpl implements com.dotmarketing.portlets.files.business
         File newFile = new File();
 
         newFile.copy( file );
+		newFile.setParent(parent.getInode());
 
         // gets filename before extension
         String fileName = com.dotmarketing.util.UtilMethods.getFileName( file.getFileName() );

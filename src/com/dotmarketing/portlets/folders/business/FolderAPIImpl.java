@@ -3,7 +3,6 @@ package com.dotmarketing.portlets.folders.business;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -12,7 +11,6 @@ import java.util.StringTokenizer;
 import java.util.TimeZone;
 
 import com.dotcms.enterprise.cmis.QueryResult;
-import com.dotcms.publisher.business.PublisherAPI;
 import com.dotmarketing.beans.Host;
 import com.dotmarketing.beans.Identifier;
 import com.dotmarketing.beans.Inode;
@@ -45,7 +43,6 @@ import com.dotmarketing.portlets.htmlpages.model.HTMLPage;
 import com.dotmarketing.portlets.links.model.Link;
 import com.dotmarketing.portlets.structure.factories.StructureFactory;
 import com.dotmarketing.portlets.structure.model.Structure;
-import com.dotmarketing.util.AdminLogger;
 import com.dotmarketing.util.InodeUtils;
 import com.dotmarketing.util.Logger;
 import com.dotmarketing.util.UtilMethods;
@@ -111,19 +108,19 @@ public class FolderAPIImpl implements FolderAPI  {
 		try {
 			localTransaction = HibernateUtil.startLocalTransactionIfNeeded();
 
-			renamed=ffac.renameFolder(folder, newName, user, respectFrontEndPermissions);
 
-			if (localTransaction) {
-                HibernateUtil.commitTransaction();
-            }
+			return ffac.renameFolder(folder, newName, user, respectFrontEndPermissions);
 
-			return renamed;
 		} catch (Exception e) {
 
 			if (localTransaction) {
 				HibernateUtil.rollbackTransaction();
 			}
-			throw new DotDataException(e.getMessage(),e);
+			throw new DotDataException(e.getMessage());
+		} finally {
+			if (localTransaction) {
+				HibernateUtil.commitTransaction();
+			}
 		}
 	}
 
@@ -311,17 +308,11 @@ public class FolderAPIImpl implements FolderAPI  {
 
 	public void delete(Folder folder, User user, boolean respectFrontEndPermissions) throws DotDataException, DotSecurityException {
 
-		if(folder==null || !UtilMethods.isSet(folder.getInode()) ){
-			Logger.debug(getClass(), "Cannot delete null folder");
-			return;
-		} else {
-			AdminLogger.log(this.getClass(), "delete", "Deleting folder with name " + (UtilMethods.isSet(folder.getName()) ? folder.getName() + " ": "name not set "), user);
-		}
 		if (!papi.doesUserHavePermission(folder, PermissionAPI.PERMISSION_EDIT, user, respectFrontEndPermissions)) {
 			throw new DotSecurityException("User " + user + " does not have permission to edit " + folder.getName());
 		}
-
-
+		
+		
 		if(folder != null && FolderAPI.SYSTEM_FOLDER.equals(folder.getInode())) {
 			throw new DotSecurityException("YOU CANNOT DELETE THE SYSTEM FOLDER");
 		}
@@ -373,8 +364,6 @@ public class FolderAPIImpl implements FolderAPI  {
 				Identifier ident=APILocator.getIdentifierAPI().find(faker);
 				CacheLocator.getNavToolCache().removeNavByPath(ident.getHostId(), ident.getParentPath());
 			}
-
-			PublisherAPI.getInstance().deleteElementFromPublishQueueTable(folder.getInode());
 
 			if(localTransaction){
                 HibernateUtil.commitTransaction();
@@ -439,7 +428,7 @@ public class FolderAPIImpl implements FolderAPI  {
 					papi.removePermissions(link);
 					APILocator.getMenuLinkAPI().delete(link, user, false);
 
-
+				
 			}
 
 			/******** delete possible orphaned identifiers under the folder *********/
@@ -479,7 +468,6 @@ public class FolderAPIImpl implements FolderAPI  {
 	 */
 
 	public Folder find(String id, User user, boolean respectFrontEndPermissions)throws DotSecurityException, DotDataException {
-
 		Folder folder= ffac.find(id);
 		if (!papi.doesUserHavePermission(folder, PermissionAPI.PERMISSION_READ, user)) {
 			throw new DotSecurityException("User " + user + " does not have permission to read " + folder.getName());
@@ -516,18 +504,17 @@ public class FolderAPIImpl implements FolderAPI  {
 				|| !papi.doesUserHavePermissions(PermissionableType.FOLDERS, PermissionAPI.PERMISSION_EDIT, user)) {
 			throw new DotSecurityException("User " + user + " does not have permission to add to " + name);
 		}
-
-		folder.setModDate(new Date());
-
+		
+		
 		ffac.save(folder, existingId);
 
 	}
-
-
+	
+	
 	public void save(Folder folder, User user, boolean respectFrontEndPermissions) throws DotDataException, DotStateException, DotSecurityException {
 
 		save( folder, null,  user,  respectFrontEndPermissions);
-
+		
 	}
 
 
@@ -940,4 +927,16 @@ public class FolderAPIImpl implements FolderAPI  {
 		List list = ffac.getChildrenClass(parent, File.class, cond, null);
 		return papi.filterCollection(list, PermissionAPI.PERMISSION_READ, respectFrontEndPermissions, user);
 	}
+
+	public boolean updateIdentifierUrl(Folder folderToUpdate, Folder newParentFolder,User user,boolean respectFrontEndPermissions)throws DotDataException, DotSecurityException {
+		if (!papi.doesUserHavePermission(folderToUpdate, PermissionAPI.PERMISSION_READ, user, respectFrontEndPermissions)) {
+			throw new DotSecurityException("User " + user + " does not have permission to read " + folderToUpdate.getName());
+		}
+
+		if (!papi.doesUserHavePermission(newParentFolder, PermissionAPI.PERMISSION_CAN_ADD_CHILDREN, user, respectFrontEndPermissions)) {
+			throw new DotSecurityException("User " + user + " does not have permission to add to " + newParentFolder.getName());
+		}
+		return ffac.updateIdentifierUrl(folderToUpdate, newParentFolder);
+	}
+
 }
